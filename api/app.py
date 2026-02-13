@@ -110,3 +110,20 @@ def userlist():
     return jsonify({
        'user':user_list
     })
+@app.route('/tweet',methods=['DELETE'])
+def tweetdelete():
+    payload = request.json
+    user_id = int(payload['id'])
+    user_massge = str(payload['tweet'])
+    if user_id not in app.users:
+        return '사용자가 존재하지 않습니다.',400
+    target_data = {
+        'user_id':user_id,
+        'tweet' : user_massge
+    }
+ 
+      
+    if target_data in app.tweets:
+        app.tweets.remove(target_data)
+        return '',200
+    return '',404
