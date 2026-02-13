@@ -93,3 +93,20 @@ def userselect(user_id):
         'name' : user_list.get('name'),
         'email' : user_list.get('email')
     })
+
+@app.route('/users',methods=['GET'])
+def userlist():
+    
+    user_list=[]
+    
+    for user in app.users.values():
+        user_list.append({
+            'id' : user['id'],
+            'name':user['name'],
+            'email':user['email']
+        })
+    if not user_list:
+        return '사용자가 존재하지 않습니다.',400
+    return jsonify({
+       'user':user_list
+    })
