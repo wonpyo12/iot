@@ -127,3 +127,17 @@ def tweetdelete():
         app.tweets.remove(target_data)
         return '',200
     return '',404
+@app.route('/user/<int:user_id>',methods=['PUT'])
+def userupdate(user_id):
+    payload = request.json
+    user = app.users[user_id]
+    if user_id not in app.users:
+        return '사용자가 존재하지 않습니다.',400
+    if 'name' in payload:
+        user['name'] = payload['name']
+    if 'email' in payload:
+        user['email'] = payload['email']
+    return jsonify({
+        "user":user
+    }),200
+
