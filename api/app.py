@@ -81,3 +81,15 @@ def timeline(user_id):
         'user_id': user_id,
         'timeline': timeline
     })
+@app.route('/user/<int:user_id>',methods=['GET'])
+def userselect(user_id):
+    if user_id not in app.users:
+        return '사용자가 존재하지 않습니다.',400
+    
+    user_list = app.users[user_id]
+    
+    return jsonify({
+        'id' : user_id,
+        'name' : user_list.get('name'),
+        'email' : user_list.get('email')
+    })
