@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,current_app
 from flask.json.provider import DefaultJSONProvider
 from sqlalchemy import create_engine, text
 
@@ -7,7 +7,40 @@ class CustomJSONProvider(DefaultJSONProvider):
        if isinstance(obj, set):
            return list(obj)
        return super().default(obj)
-
+def insert_user(user):
+    with current_app.database.connect() as conn:
+        result = conn.execute(text("""
+            INSERT INTO users(
+                name,
+                email,
+                profile,
+                hashed_password
+            )VALUES(
+                :name,
+                :email,
+                :profile,
+                :password
+            )
+        """),user)
+        conn.commit()
+        return result.lastrowid
+def get_user(user_id):
+    with current_app.database.connect() as conn:
+        user = conn.execute(text("""
+            SELECT
+                id,
+                name,
+                email,
+                profile
+            FROM users
+            WHERE id = :user_id
+        """),{'user_id':user_id}).fetchone()
+        return{
+            'id' : user[0],
+            'name' : user[1],
+            'email' : user[2],
+            'profile' : user[3]
+        } if user else None  
 def create_app(test_config=None):
    app = Flask(__name__)
    app.json_provider_class = CustomJSONProvider
@@ -33,9 +66,8 @@ def create_app(test_config=None):
    @app.route("/sign-up", methods=['POST'])
    def sign_up():
        new_user = request.json
-       new_user["id"] = app.id_count
-       app.users[app.id_count] = new_user
-       app.id_count += 1
+       new_user_id = insert_user(new_user)
+       new_user=get_user(new_user_id)
        return jsonify(new_user)
 
    @app.route('/tweet', methods=['POST'])
