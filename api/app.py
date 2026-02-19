@@ -79,6 +79,35 @@ def insert_unfollow(user_unfollow):
        conn.commit()
        return result.rowcount
 
+def get_timeline(user_id):
+    with current_app.database.connect() as conn:
+        timeline = conn.execute(text("""
+            SELECT
+                t.user_id,
+                t.tweet
+            FROM tweets t
+            LEFT JOIN users_follow_list ufl ON ufl.user_id=:user_id
+            WHERE t.user_id = :user_id
+            OR t.user_id = ufl.follow_user_id
+        """),{'user_id':user_id}).fetchall()
+        return[{
+            'user_id':tweet[0],
+            'tweet' : tweet[1]
+        }for tweet in timeline]
+def get_user(user_id):
+    with current_app.database.connect() as conn:
+        user = conn.execute(text("""
+        SELECT
+            id,name,email,profile
+            FROM users
+            WHERE id = :user_id 
+        """),{'user_id':user_id}).fetchone()
+        return[{
+            'user_id':user[0],
+            'name' : user[1],
+            'email' : user[2],
+            'profile' : user[3]
+        }if user else None]
 def create_app(test_config=None):
    app = Flask(__name__)
    app.json_provider_class = CustomJSONProvider
@@ -92,9 +121,7 @@ def create_app(test_config=None):
    database = create_engine(app.config['DB_URL'], max_overflow=0)
    app.database = database
 
-   # 메모리 기반 데이터 (4단계에서 DB로 교체 예정)
-   app.users = {}
-   app.id_count = 1
+   
    
 
    @app.route("/ping", methods=['GET'])
@@ -131,16 +158,16 @@ def create_app(test_config=None):
 
    @app.route('/timeline/<int:user_id>', methods=['GET'])
    def timeline(user_id):
-       if user_id not in app.users:
-           return '사용자가 존재하지 않습니다.', 400
-
-       follow_list = app.users[user_id].get('follow', set())
-       follow_list.add(user_id)
-       timeline = [t for t in app.tweets if t['user_id'] in follow_list]
 
        return jsonify({
            'user_id': user_id,
-           'timeline': timeline
+           'timeline': get_timeline(user_id)
        })
+   @app.route('/user/<int:user_id>', methods=['GET'])
+   def get_user_info(user_id):
+        user = get_user(user_id)
+        if user is None:
+            return '사용자가 존재하지 않습니다.',404
+        return jsonify(user)
 
    return app
