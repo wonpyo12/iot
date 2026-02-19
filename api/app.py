@@ -1,158 +1,98 @@
-from flask import Flask, jsonify, request
-from sqlalchemy import create_engine, test
-app = (Flask) (__name__)
-app.tweets = []
-app.users={}
+from flask import Flask, request, jsonify
+from flask.json.provider import DefaultJSONProvider
+from sqlalchemy import create_engine, text
 
-app.id_count =1
-app.twid_count=1
-@app.route("/ping",methods=['GET'])
+class CustomJSONProvider(DefaultJSONProvider):
+   def default(self, obj):
+       if isinstance(obj, set):
+           return list(obj)
+       return super().default(obj)
 
-def ping():
-    return "pong"
+def create_app(test_config=None):
+   app = Flask(__name__)
+   app.json_provider_class = CustomJSONProvider
+   app.json = CustomJSONProvider(app)
 
-@app.route("/sign-up",methods=['POST'])
+   if test_config is None:
+       app.config.from_pyfile("config.py")
+   else:
+       app.config.update(test_config)
 
-def sign_up():
-    new_user = request.json
-    new_user["id"] = app.id_count
-    app.users[app.id_count] = new_user
-    app.id_count = app.id_count +1
+   database = create_engine(app.config['DB_URL'], max_overflow=0)
+   app.database = database
 
-    return jsonify(new_user)
+   # 메모리 기반 데이터 (4단계에서 DB로 교체 예정)
+   app.users = {}
+   app.id_count = 1
+   app.tweets = []
 
-@app.route("/tweet",methods=['POST'])
+   @app.route("/ping", methods=['GET'])
+   def ping():
+       return "pong"
 
-def tweet():
-    
-    payload = request.json
-    user_id = int(payload['id'])
-    tweet = payload['tweet'] 
-    if user_id not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    if len(tweet) > 300:
-        return '300자를 초과했습니다.',400
-    user_id = int(payload['id'])
-    
-    app.tweets.append({
-    
-        'user_id':user_id,
-        'tweet' : tweet
-    })
-    return '',200
-@app.route('/follow',methods=['POST'])
-def follow():
-    payload = request.json
-    user_id = int(payload['id'])
-    user_id_to_follow = int(payload['follow'])
+   @app.route("/sign-up", methods=['POST'])
+   def sign_up():
+       new_user = request.json
+       new_user["id"] = app.id_count
+       app.users[app.id_count] = new_user
+       app.id_count += 1
+       return jsonify(new_user)
 
-    if user_id not in app.users or user_id_to_follow not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    user = app.users[user_id]
-    user.setdefault('follow',set()).add(user_id_to_follow)
+   @app.route('/tweet', methods=['POST'])
+   def tweet():
+       payload = request.json
+       user_id = int(payload['id'])
+       tweet = payload['tweet']
 
-    output = dict(user)
-    output['follow'] = list(user['follow'])
-    return jsonify(output)
+       if user_id not in app.users:
+           return '사용자가 존재하지 않습니다.', 400
+       if len(tweet) > 300:
+           return '300자를 초과했습니다.', 400
 
-@app.route('/unfollow',methods=['POST'])
-def unfollow():
-    payload = request.json
-    user_id = int(payload['id'])
-    user_id_to_follow=int(payload['unfollow'])
+       app.tweets.append({
+           'user_id': user_id,
+           'tweet': tweet
+       })
+       return '', 200
 
-    if user_id not in app.users or user_id_to_follow not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    user = app.users[user_id]
-    
-    user.setdefault('follow',set()).discard(user_id_to_follow)
+   @app.route('/follow', methods=['POST'])
+   def follow():
+       payload = request.json
+       user_id = int(payload['id'])
+       user_id_to_follow = int(payload['follow'])
 
-    output = dict(user)
-    output['follow'] = list(user['follow'])
-    return jsonify(output)
+       if user_id not in app.users or user_id_to_follow not in app.users:
+           return '사용자가 존재하지 않습니다.', 400
 
-@app.route('/timeline/<int:user_id>',methods=['GET'])
-def timeline(user_id):
-    if user_id not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    
-    follow_list = app.users[user_id].get('follow',set())
-    follow_list.add(user_id)
-    timeline=[tweet for tweet in app.tweets if tweet['user_id'] in follow_list]
+       user = app.users[user_id]
+       user.setdefault('follow', set()).add(user_id_to_follow)
+       return jsonify(user)
 
-    return jsonify({
-        'user_id': user_id,
-        'timeline': timeline
-    })
-@app.route('/user/<int:user_id>',methods=['GET'])
-def userselect(user_id):
-    if user_id not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    
-    user_list = app.users[user_id]
-    
-    return jsonify({
-        'id' : user_id,
-        'name' : user_list.get('name'),
-        'email' : user_list.get('email')
-    })
+   @app.route('/unfollow', methods=['POST'])
+   def unfollow():
+       payload = request.json
+       user_id = int(payload['id'])
+       user_id_to_follow = int(payload['unfollow'])
 
-@app.route('/users',methods=['GET'])
-def userlist():
-    
-    user_list=[]
-    
-    for user in app.users.values():
-        user_list.append({
-            'id' : user['id'],
-            'name':user['name'],
-            'email':user['email']
-        })
-    if not user_list:
-        return '사용자가 존재하지 않습니다.',400
-    return jsonify({
-       'user':user_list
-    })
-@app.route('/tweet',methods=['DELETE'])
-def tweetdelete():
-    payload = request.json
-    user_id = int(payload['id'])
-    user_massge = str(payload['tweet'])
-    if user_id not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    target_data = {
-        'user_id':user_id,
-        'tweet' : user_massge
-    }
- 
-      
-    if target_data in app.tweets:
-        app.tweets.remove(target_data)
-        return '',200
-    return '',404
-@app.route('/user/<int:user_id>',methods=['PUT'])
-def userupdate(user_id):
-    payload = request.json
-    user = app.users[user_id]
-    if user_id not in app.users:
-        return '사용자가 존재하지 않습니다.',400
-    if 'name' in payload:
-        user['name'] = payload['name']
-    if 'email' in payload:
-        user['email'] = payload['email']
-    return jsonify({
-        "user":user
-    }),200
+       if user_id not in app.users or user_id_to_follow not in app.users:
+           return '사용자가 존재하지 않습니다.', 400
 
-def create_app(test_config = None):
-    app = Flask(__name__)
+       user = app.users[user_id]
+       user.setdefault('follow', set()).discard(user_id_to_follow)
+       return jsonify(user)
 
-    app.json_encoder = CustomJSONEncoder
+   @app.route('/timeline/<int:user_id>', methods=['GET'])
+   def timeline(user_id):
+       if user_id not in app.users:
+           return '사용자가 존재하지 않습니다.', 400
 
-    if test_config is None:
-        app.config.from_pyfile("config.py")
-    else:
-        app.config.update(test_config)
+       follow_list = app.users[user_id].get('follow', set())
+       follow_list.add(user_id)
+       timeline = [t for t in app.tweets if t['user_id'] in follow_list]
 
-    database     = create_engine(app.config['DB_URL'], encoding = 'utf-8', max_overflow = 0)
-    app.database = database 
+       return jsonify({
+           'user_id': user_id,
+           'timeline': timeline
+       })
+
+   return app
