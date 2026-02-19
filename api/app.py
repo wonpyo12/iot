@@ -121,6 +121,13 @@ def get_all_users():
             'email' : user[2],
             'profile' : user[3]
         }if user else None]
+def delete_tweet(tweet_id):
+    with current_app.database.begin() as conn:
+        result = conn.execute(text("""
+            DELETE FROM tweets
+            WHERE id = :tweet_id
+        """),{'tweet_id':tweet_id})
+        return result.rowcount
 def create_app(test_config=None):
    app = Flask(__name__)
    app.json_provider_class = CustomJSONProvider
@@ -185,4 +192,10 @@ def create_app(test_config=None):
    @app.route('/users', methods=['GET'])
    def user_list():
         return jsonify(get_all_users())
+   @app.route('/tweet/<int:tweet_id>',methods=['DELETE'])
+   def delete_tweet_endpoint(tweet_id):
+    rows=delete_tweet(tweet_id)
+    if rows==0:
+        return '트윗이 존재하지 않습니다.',404
+    return '',200
    return app
