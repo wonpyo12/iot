@@ -108,6 +108,19 @@ def get_user(user_id):
             'email' : user[2],
             'profile' : user[3]
         }if user else None]
+def get_all_users():
+     with current_app.database.connect() as conn:
+        user = conn.execute(text("""
+        SELECT
+            id,name,email,profile
+            FROM users
+        """)).fetchone()
+        return[{
+            'user_id':user[0],
+            'name' : user[1],
+            'email' : user[2],
+            'profile' : user[3]
+        }if user else None]
 def create_app(test_config=None):
    app = Flask(__name__)
    app.json_provider_class = CustomJSONProvider
@@ -169,5 +182,7 @@ def create_app(test_config=None):
         if user is None:
             return '사용자가 존재하지 않습니다.',404
         return jsonify(user)
-
+   @app.route('/users', methods=['GET'])
+   def user_list():
+        return jsonify(get_all_users())
    return app
