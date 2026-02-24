@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>센서 대시보드</title>
+
+    <meta http-equiv="refresh" content="10">
+
+    <style>
+
+        body  { font-family: sans-serif; margin: 40px; }
+
+        table { border-collapse: collapse; width: 100%; }
+
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
+
+        th    { background-color: #4472C4; color: white; }
+
+        tr:nth-child(even) { background-color: #f2f2f2; }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>🌡️ DHT11 센서 대시보드</h1>
+
+    <!-- <p><a href="/">📥 지금 데이터 수집</a></p> -->
+
+    {% if records %}
+
+    <table>
+
+        <tr>
+
+            <th>ID</th>
+
+            <th>온도 (°C)</th>
+
+            <th>습도 (%)</th>
+
+            <th>상태</th>
+
+            <th>측정 시각</th>
+
+        </tr>
+
+        {% for row in records %}
+
+        <tr>
+
+            <td>{{ row.id }}</td>
+
+            <td>{{ row.temperature }}</td>
+
+            <td>{{ row.humidity }}</td>
+
+            <td>
+
+                {% if row.temperature >= 28 %}
+
+                    🔴 더움
+
+                {% elif row.temperature <= 20 %}
+
+                    🔵 추움
+
+                {% else %}
+
+                    🟢 쾌적
+
+                {% endif %}
+
+            </td>
+
+            <td>{{ row.recorded_at }}</td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+    {% else %}
+
+        <p>저장된 데이터가 없습니다. 위 링크를 눌러 데이터를 수집하세요.</p>
+
+    {% endif %}
+
+</body>
+
+</html>
