@@ -1,94 +1,44 @@
 ﻿<!DOCTYPE html>
 
-<html lang="ko">
+<html>
 
 <head>
 
-    <meta charset="UTF-8">
+    <title>센서 데이터</title>
 
-    <title>센서 대시보드</title>
-
-    <meta http-equiv="refresh" content="10">
-
-    <style>
-
-        body  { font-family: sans-serif; margin: 40px; }
-
-        table { border-collapse: collapse; width: 100%; }
-
-        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
-
-        th    { background-color: #4472C4; color: white; }
-
-        tr:nth-child(even) { background-color: #f2f2f2; }
-
-    </style>
+    <meta http-equiv="refresh" content="5">
 
 </head>
 
 <body>
 
-    <h1>🌡️ DHT11 센서 대시보드</h1>
+    <h1>센서 기록</h1>
 
-    <!-- <p><a href="/">📥 지금 데이터 수집</a></p> -->
+    <p> 측정 시각  : {{ now }}</p>
 
-    {% if records %}
+    {% if sensor.temperature %}
 
-    <table>
+        <p> 온도 : {{ sensor.temperature }} C</p>
 
-        <tr>
+        <p> 습도 : {{ sensor.humidity }} %</p>
 
-            <th>ID</th>
+        {% if sensor.temperature >= 28 %}
 
-            <th>온도 (°C)</th>
+            <p> 더움 </p>
 
-            <th>습도 (%)</th>
+        {% elif sensor.temperature >= 24 %}
 
-            <th>상태</th>
+            <p> 보통 </p>
 
-            <th>측정 시각</th>
+        {% else %}
 
-        </tr>
+            <p> 쾌적 </p>
 
-        {% for row in records %}
-
-        <tr>
-
-            <td>{{ row.id }}</td>
-
-            <td>{{ row.temperature }}</td>
-
-            <td>{{ row.humidity }}</td>
-
-            <td>
-
-                {% if row.temperature >= 28 %}
-
-                    🔴 더움
-
-                {% elif row.temperature <= 20 %}
-
-                    🔵 추움
-
-                {% else %}
-
-                    🟢 쾌적
-
-                {% endif %}
-
-            </td>
-
-            <td>{{ row.recorded_at }}</td>
-
-        </tr>
-
-        {% endfor %}
-
-    </table>
+        {% endif %}
 
     {% else %}
 
-        <p>저장된 데이터가 없습니다. 위 링크를 눌러 데이터를 수집하세요.</p>
+        <p> 센서 데이터를 기다리는 중... </p>
 
     {% endif %}
 
